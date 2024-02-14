@@ -1,0 +1,989 @@
+ <!DOCTYPE html>
+<html>
+  <head>
+    <title>Exploring Language Servers with Ruby</title>
+    <meta charset="utf-8">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@4.5.0/dist/reset.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@4.5.0/dist/theme/moon.css">
+    <link rel="stylesheet" href="https://unpkg.com/highlight.js@11.8.0/styles/github-dark.css">
+    <link rel="stylesheet" href="https://unpkg.com/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script type="importmap">
+      {
+        "imports": {
+          "mermaid": "https://unpkg.com/mermaid@10.8.0/dist/mermaid.esm.min.mjs",
+          "reveal.js": "https://unpkg.com/reveal.js@4.5.0/dist/reveal.esm.js",
+          "reveal.js-mermaid-plugin": "./mermaid-plugin.js",
+          "reveal.js-laser-pointer-plugin": "./laser-pointer-plugin.js",
+          "reveal.js-markdown-plugin": "https://unpkg.com/reveal.js@4.5.0/plugin/markdown/markdown.esm.js",
+          "reveal.js-highlight-plugin": "https://unpkg.com/reveal.js@4.5.0/plugin/highlight/highlight.esm.js",
+          "reveal.js-notes-plugin": "https://unpkg.com/reveal.js@4.5.0/plugin/notes/notes.esm.js"
+        }
+      }
+    </script>
+  </head>
+  <style>
+    svg {
+      max-width: 90% !important;
+      line-height: 150%;
+      -webkit-text-stroke-width: 0.01px;
+    }
+
+    img[alt="Gannon"] {
+      width: 40%;
+      float: right;
+      padding-left: 10px;
+    }
+
+    img[alt="IntelliSense in VB6"] {
+      width: 75%;
+    }
+
+    img[alt="BlueJ"] {
+      width: 70%;
+    }
+
+    img[alt="Visual Studio Code"] {
+      width: 75%;
+    }
+
+    img[alt="Python LSP"] {
+      width: 80%;
+    }
+
+    img[alt="Supported Languages"] {
+      width: 80%;
+    }
+
+    img[alt="GitLab Code Intelligence"] {
+      width: 60%;
+      margin-bottom: 0px;
+    }
+
+    img[alt="GitLab Code Intelligence Example"] {
+      width: 60%;
+      margin-top: 0px;
+    }
+
+    img[alt="Ruby LSP"] {
+      width: 85%;
+    }
+
+    img[alt="Completion"] {
+      width: 80%;
+    }
+
+    img[alt="Code Lens"] {
+      width: 80%;
+    }
+
+    img[alt="Prism"] {
+      width: 55%;
+    }
+
+    img[alt="Rails Hover"] {
+      width: 85%;
+    }
+
+    img[alt="Sorbet"] {
+      width: 55%;
+    }
+
+    img[alt="Sorbet Hover"] {
+      width: 45%;
+    }
+
+    video#sorbet-definition {
+      width: 60%;
+    }
+
+    img[alt="Ruby Extension Pack"] {
+      width: 90%;
+    }
+  </style>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section data-markdown>
+          <script type="text/template">
+            # Exploring Language Servers with Ruby
+
+            #### [Gannon McGibbon](https://gannon.io/)
+
+            Note:
+            For Winnipeg Ruby User Group, February 2024
+            ---
+            ## 👋 Hi, I'm Gannon
+
+            ![Gannon](images/me.jpg)
+
+            - Works at Shopify
+            - Committer on Ruby on Rails
+            - Organizes Winnipeg Ruby
+            Note:
+            - Intro
+            ---
+            ## My first programming language
+
+            ![Visual Basic 6.0](images/vb6.png)
+
+            Note:
+            - VB6 was light on code
+            - Form builder
+            - Event based scripting
+            - It was a good intro to programming
+            ---
+            ## IntelliSense!
+
+            ![IntelliSense in VB6](images/intellisense.jpg)
+
+            Note:
+            - Had IntelliSense
+            - Hints for objects
+            - Code completion way back in 1998
+            ---
+            ## Moved onto BlueJ
+
+            ![BlueJ](images/bluej.jpg)
+
+            Note:
+            - Moved onto Java and BlueJ
+            - Had no code completion at all
+            - Told it was programming for "grown ups"
+            - Learned a lot about OO
+            - Might be why I dislike Java
+            ---
+            ## Fast forward to VSCode
+
+            ![Visual Studio Code](images/vscode.png)
+
+            Note:
+            - I use VSCode today
+            - Built for TypeScript first
+            - Didn't always work well with Ruby
+            ---
+            ## IntelliSense?
+
+            ![IntelliSense in TypeScript](images/intellisense-vscode.png)
+
+            Note:
+            - Shipped with IntelliSense, but only in JS/TS
+            - Other languages weren't well supported
+            - Why not Ruby?
+            ---
+            ## Why not Ruby?
+
+            - Microsoft isn't using Ruby
+            - Ruby is dynamic and complicated
+            - Simply not "possible"
+
+            Note:
+            - Microsoft doesn't like Ruby
+            - Ruby is too complicated
+            - Simply impossible
+            ---
+            # Language Servers to the rescue!
+
+            Note:
+            - Not anymore!
+            - Let's talk about language servers
+            ---
+            ## The Language Server Protocol (LSP)
+
+            ![Python LSP](images/lsp-example-python.jpg)
+
+            Note:
+            - Built by Microsoft for VSCode, open sourced in 2016
+            - Provides interface for code editor features
+            - Don't have to use VSCode
+            - Evolving standard
+            ---
+            ## How Language Servers work
+
+            ```mermaid
+            flowchart LR
+              Developer("👨‍💻")
+              Editor -- "Request" --> Server
+              Server -- "Response" --> Editor
+              Developer -- "Interacts" --> Editor
+            ```
+
+            Note:
+            - How it works
+            - Explain the diagram
+            ---
+            ## How the LSP works
+
+            ```mermaid
+            sequenceDiagram
+              👨‍💻 ->> Editor: Edits some code
+              Editor -->> Server: Request: textDocument/completion
+              Server -->> Editor: Response: CompletionItem[]
+            ```
+
+            Note:
+            - Zooming into the feedback loop
+            - Explain diagram
+            - JSON-RPC requests and responses
+            - Sent via STDIN and STDOUT
+            ---
+            ## Working with multiple Servers
+
+            ```mermaid
+            sequenceDiagram
+              👨‍💻 ->> Editor: Edits Ruby file
+              Editor -->> Ruby Server: Request: textDocument/completion
+              Ruby Server -->> Editor: Response: CompletionItem[]
+              👨‍💻 ->> Editor: Edits TypeScript file
+              Editor -->> TypeScript Server: Request: textDocument/signatureHelp
+              TypeScript Server -->> Editor: Response: SignatureHelp
+            ```
+
+            Note:
+            - You aren't bound to one server
+            - Could have several for a complex project
+            - Could even have multiple for the same language
+            ---
+            ## Supported Languages
+
+            ![Supported Languages](images/supported-languages.jpg)
+
+            Note:
+            - Here's a list of implementations
+            - Language servers for languages and frameworks
+            - The list is growing
+            ---
+            ## What is Language Server Indexing Format (LSIF)?
+
+            - Indexing format for dumping info on code
+            - Extended from LSP format
+            - Provides rich editor features remotely
+
+            Note:
+            - LSIF is a sister technology to LSP
+            - Used to dump knowledge on a static codebase
+            - Allows us to get rich editor features without cloning
+            ---
+            ## Example of LSIF
+
+            ![GitLab Code Intelligence](images/code-intelligence.jpg)
+            ![GitLab Code Intelligence Example](images/code-intelligence-example.png)
+
+            Note:
+            - Isn't helpful without an example
+            - GitLab uses LSIF for Code Intelligence
+            - GitHub uses a proprietary indexing tool
+            ---
+            # How do we get IntelliSense in Ruby?
+
+            Note:
+            - We now know what language servers are
+            - Let's use them to get IntelliSense in Ruby
+            ---
+            ## Ruby LSP
+
+            ![Ruby LSP](images/ruby-lsp.jpg)
+
+            Note:
+            - First, Ruby-LSP
+            - Built by Shopify
+            - Adds several features to Ruby development
+            - Let's talk about a few of them
+            ---
+            ## Symbol search
+
+            ![Document Symbol](images/document-symbol.gif)
+
+            Note:
+            - Powered by `textDocument/documentSymbol` requests
+            - `Cmd+P`, type `@`
+            - Allows us to jump to parsed tokens in a file
+            ---
+            ## Source links
+
+            ![Document Link](images/document-link.gif)
+
+            Note:
+            - Powered by `textDocument/documentLink` requests
+            - Makes links to gem source in docs clickable
+            ---
+            ## Constant info on hover
+
+            ![Hover](images/hover.gif)
+
+            Note:
+            - Powered by `textDocument/hover` requests
+            - Shows documentation and source location for constants when hovering
+            - Note if a constant has multiple source locations, they are included
+            ---
+            ## Linting
+
+            ![Formatting](images/formatting.gif)
+
+            Note:
+            - Powered by `textDocument/formatting` requests
+            - Makes the editor lint on save with Rubocop
+            - Rubocop is the de-facto code linting tool for Ruby
+            ---
+            ## Test and debug code lenses
+
+            ![Code Lens](images/code-lens.gif)
+
+            Note:
+            - Powered by `textDocument/codeLens` requests
+            - Gives us clickable links to run and debug tests
+            - Keyed to minitest, there's an extension gem for RSpec
+            ---
+            ## Signature help for local methods
+
+            ![Signature Help](images/signature-help.gif)
+
+            Note:
+            - Powered by `textDocument/signatureHelp` requests
+            - Gives us a signature info as we type a method call
+            - Only supports methods on the current object
+            ---
+            ## Constant autocompletion
+
+            ![Completion](images/completion.gif)
+
+            Note:
+            - Powered by `textDocument/completion` requests
+            - Gives us suggestions for require paths and constants as we type
+            - Doesn't provide method suggestions
+            ---
+            # How does it work?
+
+            Note:
+            - That's great, but how does it work?
+            ---
+            ## The Handshake
+
+            - Developer enables extension for the LSP
+            - Editor sends an initialization request
+            - Server responds with capabilities of what it can do
+            - Editor sends supported requests for a given language
+
+            Note:
+            - Developer installs an LSP extension
+            - Editor boots the server
+            - Editor sends init request and gets capabilities back
+            - Editor knows what server can do now
+            ---
+            ## The Handshake
+
+            ```mermaid
+            sequenceDiagram
+              👨‍💻 ->> Editor: Activates extension
+              Editor -->> Server: Starts
+              Server -->> Editor: Ready
+              Editor -->> Server: Request: initialize
+              Server -->> Editor: Response: InitializeResult
+              👨‍💻 ->> Editor: Edits code
+              Editor -->> Server: Request: textDocument/completion
+              Server -->> Editor: Response: CompletionItems[]
+            ```
+
+            Note:
+            - Looks like this
+            - Explain diagram
+            ---
+            ## A Note on Implementation
+
+            - Server must understand its supported language
+            - Server doesn't have to be implemented in it
+            - The Ruby LSP uses Prism to parse Ruby
+
+            Note:
+            - Server must understand the language it is written for
+            - Server doesn't have to be implemented in said language
+            - The Ruby LSP is implemented in Ruby and Prism
+            - Could also have a Ruby Server written in Rust
+            ---
+            ## Prism
+
+            ![Prism](images/prism.png)
+
+            Note:
+            - Ruby parser
+            - Breaks code down into an AST
+            - AST is a representation of code as objects
+            - Other static analysis gems do this (parser)
+            ---
+            ## Ruby LSP and Syntax Trees
+
+            ![Show Syntax Tree](images/show-syntax-tree.gif)
+
+            Note:
+            - Ruby LSP has a feature to show the raw AST
+            - This is how it reads and understand Ruby code
+            - Let's look at this closer
+            ---
+            ## Syntax Tree
+
+            ```rb[]
+            class Foo
+            end
+            ```
+
+            ```txt[]
+            @ ProgramNode (location: (4,0)-(5,3))
+            ├── locals: []
+            └── statements:
+                @ StatementsNode (location: (4,0)-(5,3))
+                └── body: (length: 1)
+                    └── @ ClassNode (location: (4,0)-(5,3))
+                        ├── locals: []
+                        ├── class_keyword_loc: (4,0)-(4,5) = "class"
+                        ├── constant_path:
+                        │   @ ConstantReadNode (location: (4,6)-(4,9))
+                        │   └── name: :Foo
+                        ├── inheritance_operator_loc: ∅
+                        ├── superclass: ∅
+                        ├── body: ∅
+                        ├── end_keyword_loc: (5,0)-(5,3) = "end"
+                        └── name: :Foo
+            ```
+            Note:
+            - The AST from the last slide
+            - All of this represents an empty class
+            ---
+            ## Syntax Tree
+
+            ```rb[3-4]
+            class Foo
+            end
+            ```
+
+            ```txt[6,8-11,14-16]
+            @ ProgramNode (location: (1,0)-(2,3))
+            ├── locals: []
+            └── statements:
+                @ StatementsNode (location: (1,0)-(2,3))
+                └── body: (length: 1)
+                    └── @ ClassNode (location: (1,0)-(2,3))
+                        ├── locals: []
+                        ├── class_keyword_loc: (1,0)-(1,5) = "class"
+                        ├── constant_path:
+                        │   @ ConstantReadNode (location: (1,6)-(1,9))
+                        │   └── name: :Foo
+                        ├── inheritance_operator_loc: ∅
+                        ├── superclass: ∅
+                        ├── body: ∅
+                        ├── end_keyword_loc: (2,0)-(2,3) = "end"
+                        └── name: :Foo
+            ```
+            Note:
+            - Explain the code
+            ---
+            ## Language Server SDK Gem
+
+            ![Language Server Protocol](images/language-server-protocol.jpg)
+
+            Note:
+            - Ruby LSP uses an SDK gem to do the hard parts
+            - Provides APIs to setup a language server in Ruby
+            ---
+            ## Language Server SDK List
+
+            ![Language Server Implementations](images/implementations.png)
+
+            Note:
+            - There's a list of implementation libraries
+            - The Ruby SDK isn't on this list
+            - I'm sure there's more than this
+            ---
+            ## Source Links
+
+            ![Document Symbol](images/document-link.gif)
+
+            Note:
+            - We know how its built
+            - We need an example
+            - Let's step back to source links
+            ---
+            ## Executor
+
+            ```rb[]
+            class RubyLsp::Executor
+              def run(request)
+                uri = URI(request.dig(:params, :textDocument, :uri).to_s)
+                case request[:method]
+                when "textDocument/documentLink"
+                  document = @store.get(uri)
+                  dispatcher = Prism::Dispatcher.new
+                  document_link = Requests::DocumentLink.new(uri, document.comments, dispatcher)
+                  dispatcher.dispatch(document.tree)
+                  document_link.perform
+                end
+              end
+            end
+            ```
+            Note:
+            - The executor object accepts the request
+            - A big case statement routes the request
+            - When recognized, a request object is performed
+            ---
+            ## Executor
+
+            ```rb[2,4,5,7-8,10-12]
+            class RubyLsp::Executor
+              def run(request)
+                uri = URI(request.dig(:params, :textDocument, :uri).to_s)
+                case request[:method]
+                when "textDocument/documentLink"
+                  document = @store.get(uri)
+                  dispatcher = Prism::Dispatcher.new
+                  document_link = Requests::DocumentLink.new(uri, document.comments, dispatcher)
+                  dispatcher.dispatch(document.tree)
+                  document_link.perform
+                end
+              end
+            end
+            ```
+            Note:
+            - Explain each part
+            ---
+            ## Request
+
+            ```rb[]
+            class RubyLsp::Requests::DocumentLink < Request
+              def self.provider
+                Interface::DocumentLinkOptions.new(resolve_provider: false)
+              end
+
+              def initialize(uri, comments, dispatcher)
+                super()
+                @listener = Listeners::DocumentLink.new(uri, comments, dispatcher)
+                # ...
+              end
+        
+              def perform
+                @listener.response
+              end
+            end
+            ```
+
+            Note:
+            - This is the document link request class
+            - It defines the provider and the listener
+            - We're interested in the listener
+            ---
+            ## Request
+
+            ```rb[6,8,10,12-14]
+            class RubyLsp::Requests::DocumentLink < Request
+              def self.provider
+                Interface::DocumentLinkOptions.new(resolve_provider: false)
+              end
+
+              def initialize(uri, comments, dispatcher)
+                super()
+                @listener = Listeners::DocumentLink.new(uri, comments, dispatcher)
+                # ...
+              end
+        
+              def perform
+                @listener.response
+              end
+            end
+            ```
+
+            Note:
+            - Explain the code
+            ---
+            ## Listener
+
+            ```rb[]
+            class RubyLsp::Listeners::DocumentLink < Listener
+              def initialize(uri, comments, dispatcher)
+                super(dispatcher)
+                dispatcher.register(
+                  self,
+                  :on_def_node_enter,
+                  :on_class_node_enter,
+                  :on_module_node_enter,
+                )
+              end
+
+              def on_def_node_enter(node)
+                extract_document_link(node)
+              end
+            end
+            ```
+
+            Note:
+            - This is the listener for document links
+            - Uses prism to listen for parsing events
+            - We extract documented links for each kind of node
+            ---
+            ## Listener
+
+            ```rb[2,4-9, 12-14]
+            class RubyLsp::Listeners::DocumentLink < Listener
+              def initialize(uri, comments, dispatcher)
+                super(dispatcher)
+                dispatcher.register(
+                  self,
+                  :on_def_node_enter,
+                  :on_class_node_enter,
+                  :on_module_node_enter,
+                )
+              end
+
+              def on_def_node_enter(node)
+                extract_document_link(node)
+              end
+            end
+            ```
+
+            Note:
+            - Explain the code
+            ---
+            ## Listener
+
+            ```rb[]
+            class RubyLsp::Listeners::DocumentLink < Listener
+              def extract_document_link(node)
+                comment = @lines_to_comments[node.location.start_line - 1]
+                match = comment.location.slice.match(%r{source://.*#\d+$})
+                uri = URI(match[0])
+                gem_version = resolve_version(uri)
+                file_path = self.class.gem_paths.dig(uri.gem_name, gem_version, CGI.unescape(uri.path))
+
+                @_response << Interface::DocumentLink.new(
+                  range: range_from_location(comment.location),
+                  target: "file://#{file_path}##{uri.line_number}",
+                  tooltip: "Jump to #{file_path}##{uri.line_number}",
+                )
+              end
+            end
+            ```
+            Note:
+            - This is the extract document link method
+            - Basically we find links from docs and add them to the response
+            ---
+            ## Listener
+
+            ```rb[3-13]
+            class RubyLsp::Listeners::DocumentLink < Listener
+              def extract_document_link(node)
+                comment = @lines_to_comments[node.location.start_line - 1]
+                match = comment.location.slice.match(%r{source://.*#\d+$})
+                uri = URI(match[0])
+                gem_version = resolve_version(uri)
+                file_path = self.class.gem_paths.dig(uri.gem_name, gem_version, CGI.unescape(uri.path))
+
+                @_response << Interface::DocumentLink.new(
+                  range: range_from_location(comment.location),
+                  target: "file://#{file_path}##{uri.line_number}",
+                  tooltip: "Jump to #{file_path}##{uri.line_number}",
+                )
+              end
+            end
+            ```
+            Note:
+            - Explain the code
+            ---
+            ## Source Links
+
+            ![Document Symbol](images/document-link.gif)
+
+            Note:
+            - Put it all together
+            ---
+            ## What about Rails?
+
+            ![Ruby LSP Rails](images/ruby-lsp-rails.jpg)
+
+            Note:
+            - There's a gem for that
+            - Extends Ruby LSP to understand Rails
+            ---
+            ## Installation
+
+            ```rb
+            # Gemfile
+
+            gem "ruby-lsp-rails", group: :development
+            ```
+            ```sh
+            > bundle install
+            ```
+
+            Note:
+            - We add it to our bundle
+            - Run bundle install
+            - This won't be needed in the future
+            - Let's talk about some features
+            ---
+            ## Schema info on hover
+
+            ![Rails Hover](images/rails-hover.gif)
+
+            Note:
+            - Powered by `textDocument/hover` requests
+            - Shows column info and where it is defined for models
+            - This info is decoupled from the model class by default
+            ---
+            ## Test and debug code lenses
+
+            ![Code Lens](images/rails-code-lens.gif)
+
+            Note:
+            - Same as the test code lens in Ruby LSP
+            - Uses the Rails test runner
+            ---
+            # Missing pieces
+
+            Note:
+            - We don't have full code completion
+            - Only for constants, local signatures
+            - We can do better
+            ---
+            ## Sorbet
+
+            ![Sorbet](images/sorbet.png)
+
+            Note:
+            - To get more features, we need static typing
+            - Sorbet allows us to add typing to Ruby
+            - Sorbet is a talk within itself, I'll be brief
+            ---
+            ## Installation
+
+            ```rb
+            # Gemfile
+
+            gem "sorbet", require: false
+            gem "sorbet-runtime"
+            gem "tapioca", require: false
+            ```
+            ```sh
+            > bundle install
+            ```
+
+            Note:
+            - We add sorbet gems to our bundle
+            - Allows us to use static and runtime typing info
+            - Run bundle install
+            ---
+            ## Installation
+
+            ```sh
+            > bundle exec tapioca init
+            ```
+            ```sh
+            sorbet
+            ├── config
+            ├── rbi
+            │   ├── annotations
+            │   │   ├── *.rbi
+            │   ├── gems
+            │   │   ├── *.rbi
+            │   └── todo.rbi
+            └── tapioca
+                ├── config.yml
+                └── require.rb
+            ```
+
+            Note:
+            - We can initialize Sorbet with Tapioca
+            - Tapioca generates interface files (RBIs)
+            - We'll use these files later
+            ---
+            ## Installation
+            ```rb[1]
+            # typed: true
+            # frozen_string_literal: true
+
+            class ApplicationController < ActionController::Base
+            end
+            ```
+            ```rb[1]
+            # typed: true
+            # frozen_string_literal: true
+            
+            class ApplicationRecord < ActiveRecord::Base
+            end
+            ```
+            ```rb[1]
+            # typed: true
+            # frozen_string_literal: true
+
+            module ApplicationHelper
+            end
+            ```
+
+            Note:
+            - Sorbet denotes typing with comments
+            - This is helpful for projects adopting typing
+            - Need to set all files to typed: true
+            ---
+            ## Signatures
+
+            ```rb
+            # typed: true
+            # frozen_string_literal: true
+
+            class Greeting
+              extend T::Sig
+
+              sig { void }
+              def hello
+                puts "Hello Sorbet"
+              end
+            end
+            ```
+
+            Note:
+            - Explain the code
+            ---
+
+            ## Signatures
+            ```rb[1,5,7]
+            # typed: true
+            # frozen_string_literal: true
+
+            class Greeting
+              extend T::Sig
+
+              sig { void }
+              def hello
+                puts "Hello Sorbet"
+              end
+            end
+            ```
+
+            Note:
+            - You'll see this in the next slides
+            - We don't need to add sigs to code
+            - Ships with type defs for standard library
+            ---
+            ## Sorbet LSP
+
+            ![Sorbet LSP](images/sorbet-lsp.png)
+
+            Note:
+            - With sorbet in place, we can use the Sorbet LSP
+            - This will give us fill the support gaps Ruby LSP has
+            - Written in C, understands Ruby
+            - Let's talk about features
+            ---
+            ## Type Errors
+
+            ![Type Errors](images/sorbet-type-errors.png)
+
+            Note:
+            - First, inline typing info
+            - Shows typing errors in the editor
+            - We're not really interested in this feature
+            ---
+            ## Method Info on Hover
+
+            ![Sorbet Hover](images/sorbet-hover.png)
+
+            Note:
+            - Shows method docs and typing info on hover
+            - Allows us to quickly peek at method information
+            - Works with standard library methods and application code
+            ---
+            ## Go To Definition
+
+            <video id="sorbet-definition" data-autoplay loop src="images/sorbet-definition.mp4"></video>
+
+            Note:
+            - Jumps to the source location of something on right click
+            - Works with gem and application files
+            - `Cmd+Click` also works
+            ---
+            ## Autocomplete
+
+            <video data-autoplay loop src="images/sorbet-autocomplete.mp4"></video>
+
+            Note:
+            - Gives us method autocompletion as we type
+            - Write code faster, remember less
+            - Works with standard library methods and application code
+            ---
+            ## We have IntelliSense in Ruby!
+
+            # 🥳
+
+            Note:
+            - We have IntelliSense
+            ---
+            ## Ruby Extension Pack
+
+            ![Ruby Extension Pack](images/ruby-extension-pack.png)
+
+            Note:
+            - Shopify has an extension pack with these extensions
+            - Sorbet is only used if you have it on your project
+            - It includes an additional debug extension not covered
+            ---
+            ## Summary
+
+            - Use Language Servers!
+            - You can use multiple Language Servers
+            - Help make Language Servers better!
+
+            Note:
+            - Use language servers if you aren't already
+            - Can use multiple servers, per language or framework
+            - Language Servers are new, help out
+            ---
+            # Questions?
+            ---
+            ## Further Reading
+
+            - https://microsoft.github.io/language-server-protocol/
+            - https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/
+            - https://github.com/Shopify/ruby-lsp
+            - https://github.com/Shopify/ruby-lsp-rails
+            - https://github.com/mtsmfm/language_server-protocol-ruby
+            - https://sorbet.org/docs/overview
+            - https://github.com/sorbet/sorbet
+            ---
+
+            ---
+
+            ---
+          </script>
+        </section>
+      </div>
+    </div>
+    <script type="module">
+      import Reveal from 'reveal.js'
+      import Markdown from 'reveal.js-markdown-plugin'
+      import Mermaid from 'reveal.js-mermaid-plugin'
+      import LaserPointer from 'reveal.js-laser-pointer-plugin'
+      import Highlight from 'reveal.js-highlight-plugin'
+      import Notes from 'reveal.js-notes-plugin'
+
+      const deck = new Reveal({
+        plugins: [
+          Markdown,
+          Mermaid,
+          LaserPointer,
+          Highlight,
+          Notes,
+        ]
+      })
+      deck.initialize({
+        transition: 'none',
+        center: false,
+        controls: false,
+        hash: true,
+        controlsBackArrows: 'hidden',
+        mermaid: {
+          theme: 'dark',
+          themeVariables: {
+            signalTextColor: '',
+          },
+        },
+      })
+    </script>
+  </body>
+</html> 
