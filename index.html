@@ -140,7 +140,7 @@
 
             Note:
             - Had IntelliSense
-            - Hints for objects
+            - Predictive hints as your type
             - Code completion way back in 1998
             ---
             ## Moved onto BlueJ
@@ -278,7 +278,7 @@
             # How do we get IntelliSense in Ruby?
 
             Note:
-            - We now know what language servers are
+            - We know what the LSP is
             - Let's use them to get IntelliSense in Ruby
             ---
             ## Ruby LSP
@@ -306,7 +306,7 @@
 
             Note:
             - Powered by `textDocument/documentLink` requests
-            - Makes links to gem source in docs clickable
+            - Makes links to gem code in docs clickable
             ---
             ## Constant info on hover
 
@@ -666,7 +666,7 @@
             ---
             ## Listener
 
-            ```rb[3-13]
+            ```rb[3-4,7-13]
             class RubyLsp::Listeners::DocumentLink < Listener
               def extract_document_link(node)
                 comment = @lines_to_comments[node.location.start_line - 1]
@@ -692,6 +692,7 @@
 
             Note:
             - Put it all together
+            - Allows us to inspect gem source links
             ---
             ## What about Rails?
 
@@ -700,6 +701,7 @@
             Note:
             - There's a gem for that
             - Extends Ruby LSP to understand Rails
+            - Not many features yet
             ---
             ## Installation
 
@@ -932,7 +934,7 @@
             Note:
             - Use language servers if you aren't already
             - Can use multiple servers, per language or framework
-            - Language Servers are new, help out
+            - Language Server projects need your help
             ---
             # Questions?
             ---
